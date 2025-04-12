@@ -1,6 +1,6 @@
 [package]
 name = "video-dl"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "A fast and user-friendly video downloader CLI tool"
 authors = ["Phong H. <huyphongbn24@gmail.com>"]

@@ -9,6 +9,7 @@ use crate::Result;
 
 pub mod detector;
 pub mod youtube;
+pub mod tiktok;
 
 // Factory for creating platform implementations
 pub struct PlatformFactory;
@@ -18,6 +19,9 @@ impl PlatformFactory {
     pub fn register_platforms(detector: &mut detector::PlatformDetector) {
         // Register YouTube platform
         detector.register(Arc::new(youtube::YouTube::default()));
+        
+        // Register TikTok platform
+        detector.register(Arc::new(tiktok::TikTok::default()));
         
         // When adding new platforms, register them here:
         // detector.register(Arc::new(vimeo::Vimeo::default()));
