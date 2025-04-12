@@ -1,53 +1,58 @@
 use thiserror::Error;
-use url::Url;
+use std::path::PathBuf;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Invalid URL: {0}")]
-    InvalidUrl(String),
-
-    #[error("Unsupported platform: {0}")]
-    UnsupportedPlatform(String),
-
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
+
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
 
     #[error("Platform error: {0}")]
     Platform(String),
 
-    #[error("Download error: {0}")]
-    Download(String),
-
-    #[error("Invalid quality format: {0}")]
-    InvalidQuality(String),
-
-    #[error("Video not found: {0}")]
-    VideoNotFound(Url),
-
-    #[error("Invalid video format: {0}")]
+    #[error("Invalid format: {0}")]
     InvalidFormat(String),
 
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    #[error("Unsupported platform")]
+    UnsupportedPlatform,
+    
+    #[error("Failed to execute external command: {command} - {reason}")]
+    CommandExecution {
+        command: String,
+        reason: String,
+    },
+    
+    #[error("Failed to parse command output: {0}")]
+    OutputParsing(String),
+    
+    #[error("Download failed: {reason}")]
+    DownloadFailed {
+        reason: String,
+    },
+    
+    #[error("Invalid output path: {0}")]
+    InvalidOutputPath(PathBuf),
+    
+    #[error("No suitable formats found")]
+    NoSuitableFormats,
 }
 
-pub trait ErrorExt {
-    fn context<C>(self, context: C) -> Self
-    where
-        C: std::fmt::Display + Send + Sync + 'static;
+pub type Result<T> = std::result::Result<T, Error>;
+
+// Helper function to create context-rich platform errors
+pub fn platform_err<S: Into<String>>(msg: S) -> Error {
+    Error::Platform(msg.into())
 }
 
-impl ErrorExt for Error {
-    fn context<C>(self, context: C) -> Self
-    where
-        C: std::fmt::Display + Send + Sync + 'static,
-    {
-        match self {
-            Error::Other(err) => Error::Other(err.context(context)),
-            err => Error::Other(anyhow::Error::new(err).context(context)),
-        }
+// Helper function to create context-rich command execution errors
+pub fn command_err<S1: Into<String>, S2: Into<String>>(command: S1, reason: S2) -> Error {
+    Error::CommandExecution {
+        command: command.into(),
+        reason: reason.into(),
     }
 }

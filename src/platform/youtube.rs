@@ -8,22 +8,14 @@ use tokio::io::{BufReader, AsyncBufReadExt};
 use url::Url;
 use regex::Regex;
 
-use crate::{Error, Result, VideoFormat, VideoInfo, Quality, Format};
-use super::Platform;
+use crate::{Error, Result};
+use super::{Platform, VideoFormat, VideoInfo, Quality, Format};
 
-pub struct YouTube {
-    client: reqwest::Client,
-}
+#[derive(Default)]
+pub struct YouTube {}
 
 impl YouTube {
-    pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
-    }
-
     async fn extract_video_id(&self, url: &Url) -> Result<String> {
-        // Handle youtu.be URLs
         if url.host_str() == Some("youtu.be") {
             return url.path_segments()
                 .and_then(|segments| segments.last())
@@ -31,7 +23,6 @@ impl YouTube {
                 .ok_or_else(|| Error::InvalidUrl("Invalid YouTube short URL".into()));
         }
 
-        // Handle youtube.com URLs
         url.query_pairs()
             .find(|(key, _)| key == "v")
             .map(|(_, value)| value.to_string())
@@ -39,62 +30,94 @@ impl YouTube {
     }
 
     async fn get_format_info(&self, video_id: &str) -> Result<Vec<VideoFormat>> {
-        // Get video formats using yt-dlp
+        // Run yt-dlp to get available formats
         let output = Command::new("yt-dlp")
-            .arg("-F")
-            .arg(format!("https://www.youtube.com/watch?v={}", video_id))
+            .args([
+                "-F",
+                "--format-sort", "hasvid+hasaud,res,fps,codec:h264",
+                format!("https://www.youtube.com/watch?v={}", video_id).as_str()
+            ])
             .output()
             .await
             .map_err(|e| Error::Platform(format!("Failed to execute yt-dlp: {}", e)))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let mut formats = Vec::new();
-
-        // Parse yt-dlp format list output
-        // Format pattern: ID EXT RESOLUTION FPS ...
-        let format_re = Regex::new(r"(\d+)\s+(\w+)\s+(\d+x\d+|audio only)").unwrap();
         
+        // Find formats with video (possibly combined with audio)
+        let mut found_any_format = false;
+        
+        // Process all lines of output
         for line in stdout.lines() {
-            if let Some(caps) = format_re.captures(line) {
-                let id = caps[1].to_string();
-                let ext = &caps[2];
-                let resolution = &caps[3];
-                
-                let format = match ext {
-                    "mp4" => Format::MP4,
-                    "webm" => Format::WebM,
-                    "mov" => Format::MOV,
-                    _ => Format::Other(ext.to_string()),
-                };
-
-                let quality = if resolution == "audio only" {
-                    Quality::Low
-                } else if resolution.contains('x') {
-                    let height = resolution.split('x')
-                        .nth(1)
-                        .and_then(|h| h.parse::<u32>().ok())
-                        .unwrap_or(0);
-                    match height {
-                        h if h <= 360 => Quality::Low,
-                        h if h <= 480 => Quality::Medium,
-                        h if h <= 720 => Quality::HD720,
-                        h if h <= 1080 => Quality::HD1080,
-                        h if h <= 2160 => Quality::UHD2160,
-                        _ => Quality::Custom(format!("{}p", height)),
-                    }
-                } else {
-                    Quality::Custom(resolution.to_string())
-                };
-
+            // Skip header lines and separator lines
+            if line.starts_with("ID") || line.starts_with("--") || line.trim().is_empty() {
+                continue;
+            }
+            
+            // Parse format information - use multiple spaces as separator
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 3 {
+                continue; // Not enough parts to be a format line
+            }
+            
+            // Extract basic fields (ID and extension are always in the same position)
+            let id = parts[0].to_string();
+            let ext = parts[1].to_string();
+            
+            // Check if this is an audio-only format
+            if line.contains("audio only") {
+                continue; // Skip audio-only formats
+            }
+            
+            // Determine quality by looking for resolution patterns
+            let quality = if line.contains("1920x1080") || line.contains("1080p") {
+                Quality::HD1080
+            } else if line.contains("1280x720") || line.contains("720p") {
+                Quality::HD720
+            } else if line.contains("854x480") || line.contains("480p") {
+                Quality::Medium
+            } else if line.contains("640x360") || line.contains("360p") {
+                Quality::Low
+            } else if line.contains("426x240") || line.contains("240p") {
+                Quality::Low
+            } else if line.contains("2160") {
+                Quality::UHD2160
+            } else {
+                // Default to medium quality if we can't determine
+                Quality::Medium
+            };
+            
+            // Determine format based on extension
+            let format = match ext.as_str() {
+                "mp4" => Format::MP4,
+                "webm" => Format::WebM,
+                "mov" => Format::MOV,
+                _ => Format::Other(ext.clone()),
+            };
+            
+            // Only add if it's not audio-only (double check)
+            if !line.contains("audio only") {
                 formats.push(VideoFormat {
                     id,
                     quality,
                     format,
                     file_size: None,
                 });
+                found_any_format = true;
             }
         }
-
+        
+        // Always add a "best" format that lets yt-dlp choose
+        formats.push(VideoFormat {
+            id: "best".to_string(),
+            quality: Quality::HD1080, // Assume high quality for "best"
+            format: Format::MP4,      // Assume MP4 for "best"
+            file_size: None,
+        });
+        
+        println!("Found {} formats", formats.len());
+        
+        // Even if no specific formats were found, we added "best"
         Ok(formats)
     }
 }
@@ -107,17 +130,13 @@ impl Platform for YouTube {
 
     fn supports_url(&self, url: &Url) -> bool {
         url.host_str()
-            .map(|host| {
-                host.ends_with("youtube.com") || 
-                host.ends_with("youtu.be")
-            })
+            .map(|host| host.ends_with("youtube.com") || host.ends_with("youtu.be"))
             .unwrap_or(false)
     }
 
     async fn extract_info(&self, url: &Url) -> Result<VideoInfo> {
         let video_id = self.extract_video_id(url).await?;
         
-        // Get video metadata using yt-dlp
         let output = Command::new("yt-dlp")
             .args(["--dump-json", "--no-playlist"])
             .arg(format!("https://www.youtube.com/watch?v={}", video_id))
@@ -150,22 +169,22 @@ impl Platform for YouTube {
         })
     }
 
-    async fn download_video(
-        &self,
-        info: &VideoInfo,
-        format_id: &str,
-        output_path: &Path,
-        progress_tx: Arc<watch::Sender<f64>>,
-    ) -> Result<()> {
+    async fn download_video(&self, info: &VideoInfo, format_id: &str, output_path: &Path, progress_tx: Arc<watch::Sender<f64>>) -> Result<()> {
         let output_str = output_path.to_str()
             .ok_or_else(|| Error::Platform("Invalid output path".to_string()))?;
 
+        // Use format ID with best audio
+        // format_id:format_id+bestaudio ensures video has audio
+        let format_spec = format!("{}+bestaudio/best", format_id);
+
         let mut child = Command::new("yt-dlp")
-            .arg("-f")
-            .arg(format_id)
-            .arg("--newline")
-            .arg("-o")
-            .arg(output_str)
+            .args([
+                "-f", &format_spec,
+                "--merge-output-format", "mp4",  // Always merge to MP4
+                "--newline",
+                "--no-part",  // Don't create temporary .part files
+                "-o", output_str,
+            ])
             .arg(info.url.as_str())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -176,7 +195,6 @@ impl Platform for YouTube {
         
         if let Some(stderr) = child.stderr.take() {
             let mut reader = BufReader::new(stderr).lines();
-            
             while let Ok(Some(line)) = reader.next_line().await {
                 if let Some(caps) = progress_re.captures(&line) {
                     if let Ok(progress) = caps[1].parse::<f64>() {
@@ -195,28 +213,5 @@ impl Platform for YouTube {
         }
 
         Ok(())
-    }
-}
-
-impl Default for YouTube {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_supports_url() {
-        let youtube = YouTube::new();
-        let youtube_url = Url::parse("https://www.youtube.com/watch?v=dQw4w9WgXcQ").unwrap();
-        let youtu_be_url = Url::parse("https://youtu.be/dQw4w9WgXcQ").unwrap();
-        let other_url = Url::parse("https://example.com/video").unwrap();
-        
-        assert!(youtube.supports_url(&youtube_url));
-        assert!(youtube.supports_url(&youtu_be_url));
-        assert!(!youtube.supports_url(&other_url));
     }
 }

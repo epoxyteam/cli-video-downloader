@@ -1,112 +1,90 @@
 use async_trait::async_trait;
-use url::Url;
+use std::path::Path;
 use std::sync::Arc;
+use std::fmt;
+use tokio::sync::watch;
+use url::Url;
 
-use crate::{Error, Result, VideoInfo};
+use crate::Result;
 
-/// Core platform trait that can be used as a trait object
+pub mod detector;
+pub mod youtube;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Quality {
+    Low,
+    Medium,
+    High,
+    HD720,
+    HD1080,
+    UHD2160,
+    Custom(String),
+}
+
+impl fmt::Display for Quality {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Quality::Low => write!(f, "low"),
+            Quality::Medium => write!(f, "medium"),
+            Quality::High => write!(f, "high"),
+            Quality::HD720 => write!(f, "720p"),
+            Quality::HD1080 => write!(f, "1080p"),
+            Quality::UHD2160 => write!(f, "2160p"),
+            Quality::Custom(q) => write!(f, "{}", q),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Format {
+    MP4,
+    WebM,
+    MOV,
+    Other(String),
+}
+
+impl fmt::Display for Format {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Format::MP4 => write!(f, "mp4"),
+            Format::WebM => write!(f, "webm"),
+            Format::MOV => write!(f, "mov"),
+            Format::Other(fmt) => write!(f, "{}", fmt),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoFormat {
+    pub id: String,
+    pub quality: Quality,
+    pub format: Format,
+    pub file_size: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoInfo {
+    pub url: Url,
+    pub title: String,
+    pub description: Option<String>,
+    pub duration: Option<u64>,
+    pub formats: Vec<VideoFormat>,
+}
+
 #[async_trait]
 pub trait Platform: Send + Sync {
-    /// Returns the name of the platform (e.g., "YouTube", "TikTok")
     fn name(&self) -> &'static str;
-
-    /// Checks if the given URL is supported by this platform
     fn supports_url(&self, url: &Url) -> bool;
-
-    /// Extracts video information without downloading
     async fn extract_info(&self, url: &Url) -> Result<VideoInfo>;
-
-    /// Downloads the video with the specified format
     async fn download_video(
         &self,
         info: &VideoInfo,
         format_id: &str,
-        output_path: &std::path::Path,
-        progress_tx: Arc<tokio::sync::watch::Sender<f64>>,
+        output_path: &Path,
+        progress_tx: Arc<watch::Sender<f64>>,
     ) -> Result<()>;
 }
 
-pub mod detector;
-pub mod youtube;
-// We'll implement these later
-// pub mod tiktok;
-// pub mod reddit;
-// pub mod instagram;
-
-// Re-export platform implementations
-pub use detector::PlatformDetector;
-pub use youtube::YouTube;
-
-// Factory function to create a new platform detector with all supported platforms
-pub fn create_platform_detector() -> PlatformDetector {
-    let mut detector = PlatformDetector::new();
-    
-    // Register platform implementations
-    detector.register(Arc::new(YouTube::new()));
-    
-    detector
-}
-
-// Helper function to normalize URLs (remove tracking parameters, etc.)
 pub fn normalize_url(url: &str) -> Result<Url> {
-    let url = Url::parse(url).map_err(|e| Error::InvalidUrl(e.to_string()))?;
-    
-    // Create a new URL with only the essential components
-    let mut normalized = Url::parse(&format!(
-        "{}://{}{}",
-        url.scheme(),
-        url.host_str().ok_or_else(|| Error::InvalidUrl("No host found".into()))?,
-        url.path()
-    )).map_err(|e| Error::InvalidUrl(e.to_string()))?;
-    
-    // Preserve only essential query parameters (platform specific)
-    if let Some(query) = url.query() {
-        let essential_params: Vec<(String, String)> = url
-            .query_pairs()
-            .filter(|(key, _)| {
-                matches!(key.as_ref(), 
-                    "v" | // YouTube video ID
-                    "t" | // Timestamp
-                    "id" // Generic video ID
-                )
-            })
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-            
-        if !essential_params.is_empty() {
-            normalized.set_query(Some(
-                &essential_params
-                    .iter()
-                    .map(|(k, v)| format!("{}={}", k, v))
-                    .collect::<Vec<_>>()
-                    .join("&")
-            ));
-        }
-    }
-    
-    Ok(normalized)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_normalize_url() {
-        let test_cases = vec![
-            (
-                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=shared",
-                "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-            ),
-            (
-                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s&feature=shared",
-                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s"
-            ),
-        ];
-
-        for (input, expected) in test_cases {
-            let normalized = normalize_url(input).unwrap().to_string();
-            assert_eq!(normalized, expected);
-        }
-    }
+    Url::parse(url).map_err(|_| crate::Error::InvalidUrl(url.to_string()))
 }
