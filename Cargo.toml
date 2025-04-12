@@ -1,0 +1,45 @@
+[package]
+name = "video-dl"
+version = "0.1.0"
+edition = "2021"
+description = "A fast and user-friendly video downloader CLI tool"
+authors = ["Phong H. <huyphongbn24@gmail.com>"]
+license = "MIT"
+
+[dependencies]
+# CLI argument parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Async runtime and networking
+tokio = { version = "1.35", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+async-trait = "0.1"
+futures = "0.3"
+tokio-stream = "0.1"
+
+# Progress bars and CLI interface
+indicatif = "0.17"
+
+# URL parsing and validation
+url = "2.5"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Utils
+uuid = { version = "1.6", features = ["v4"] }
+sanitize-filename = "0.5"
+regex = "1.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockall = "0.12"
