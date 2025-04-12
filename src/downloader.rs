@@ -5,6 +5,7 @@ use crate::{Result, platform::normalize_url, Config};
 use crate::platform::detector::PlatformDetector;
 use crate::utils::progress::ProgressTracker;
 
+#[derive(Clone)]
 pub struct Downloader {
     detector: PlatformDetector,
     config: Config,

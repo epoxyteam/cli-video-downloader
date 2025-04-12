@@ -5,6 +5,7 @@ use crate::Result;
 use crate::Error;
 use url::Url;
 
+#[derive(Clone)]
 pub struct PlatformDetector {
     platforms: Vec<Arc<dyn Platform>>,
 }

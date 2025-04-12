@@ -38,5 +38,15 @@ async fn main() -> Result<()> {
         Commands::Config { action } => {
             video_dl::commands::config_command(action).await
         }
+        Commands::Batch { url, file, output_dir, quality, format, parallel } => {
+            // For batch download, we ideally want both yt-dlp and ffmpeg
+            if !dependency_check::all_dependencies_available(&status) {
+                eprintln!("Warning: Some dependencies are missing. Limited functionality available.");
+                dependency_check::print_dependency_status(&status);
+                eprintln!("Continuing anyway...");
+            }
+            
+            video_dl::commands::batch_download_command(url, file, output_dir, quality, format, parallel).await
+        }
     }
 }
