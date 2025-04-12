@@ -34,6 +34,10 @@ env_logger = "0.10"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+toml = "0.7"  # Added for config file handling
+
+# File system and path operations
+dirs = "5.0"  # Added for accessing user directories
 
 # Utils
 uuid = { version = "1.6", features = ["v4"] }

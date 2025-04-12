@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use crate::{Error, Result, Downloader};
+use crate::{Error, Result, Downloader, Config};
 
 /// Handles the download command execution
 pub async fn download_command(
@@ -8,7 +8,15 @@ pub async fn download_command(
     quality: String, 
     format: String
 ) -> Result<()> {
-    let downloader = Downloader::new();
+    // Load configuration
+    let config = Config::load();
+    
+    // Use provided quality/format or fall back to config defaults
+    let quality = if quality == "best" { config.default_quality.clone() } else { quality };
+    let format = if format == "mp4" { config.default_format.clone() } else { format };
+    
+    // Create downloader with config
+    let downloader = Downloader::with_config(config);
     
     println!("Fetching video information...");
     let info = downloader.get_video_info(&url).await?;
@@ -37,21 +45,13 @@ pub async fn download_command(
         .or_else(|| info.formats.first())
         .ok_or_else(|| Error::NoSuitableFormats)?;
 
-    let output_path = output.unwrap_or_else(|| {
-        let filename = format!(
-            "{}-{}.{}",
-            sanitize_filename::sanitize(&info.title),
-            selected_format.quality.to_string().to_lowercase(),
-            format.to_lowercase()
-        );
-        PathBuf::from(filename)
-    });
-
     println!("Starting download of '{}' in {} {} (format ID: {})", 
         info.title, selected_format.quality, selected_format.format, selected_format.id
     );
 
-    downloader.download(&url, &selected_format.id, output_path).await?;
-    println!("\n✓ Download completed");
+    // Download returns the path where the file was saved
+    let output_path = downloader.download(&url, &selected_format.id, output).await?;
+    
+    println!("\n✓ Download completed: {:?}", output_path);
     Ok(())
 }

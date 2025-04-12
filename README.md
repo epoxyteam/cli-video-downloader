@@ -1,135 +1,112 @@
-# Video Downloader CLI
+# CLI Video Downloader
 
-A fast and user-friendly command-line tool for downloading videos from various platforms written in Rust.
-
-## Supported Platforms
-
-- YouTube (basic support)
-- More platforms coming soon:
-  - TikTok
-  - Douyin
-  - Reddit
-  - Instagram
+A fast and user-friendly command-line video downloader built in Rust. This application allows you to download videos from various platforms (currently YouTube, with more platforms coming soon).
 
 ## Features
 
-- Fast, concurrent downloads
-- Progress tracking
-- Quality selection
-- Format selection
-- Platform auto-detection
-- Clean command-line interface
+- Download videos from YouTube (more platforms coming soon)
+- Select video quality and format
+- Show detailed video information
+- Customizable configuration
+- Progress bar display
+- Support for various output formats
 
 ## Installation
 
+### Prerequisites
+
+Make sure you have `yt-dlp` installed and available in your PATH. This tool uses `yt-dlp` under the hood.
+
+- Install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation
+
+### Install from Source
+
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/video-dl.git
-cd video-dl
-
-# Build the project
+git clone https://github.com/yourusername/cli-video-downloader.git
+cd cli-video-downloader
 cargo build --release
-
-# The binary will be available in target/release/video-dl
 ```
+
+The binary will be available at `target/release/video-dl`.
 
 ## Usage
 
 ### Download a Video
 
 ```bash
-# Basic usage (auto-selects best quality)
-video-dl download --url "https://www.youtube.com/watch?v=..."
+video-dl download -u https://www.youtube.com/watch?v=dQw4w9WgXcQ
+```
 
-# Specify quality and format
-video-dl download --url "https://www.youtube.com/watch?v=..." --quality 1080p --format mp4
+Specify quality and format:
 
-# Specify output location
-video-dl download --url "https://www.youtube.com/watch?v=..." --output "my-video.mp4"
+```bash
+video-dl download -u https://www.youtube.com/watch?v=dQw4w9WgXcQ -q 720p -f mp4
+```
+
+Specify output path:
+
+```bash
+video-dl download -u https://www.youtube.com/watch?v=dQw4w9WgXcQ -o my-video.mp4
 ```
 
 ### Get Video Information
 
 ```bash
-video-dl info --url "https://www.youtube.com/watch?v=..."
+video-dl info -u https://www.youtube.com/watch?v=dQw4w9WgXcQ
 ```
 
-### Supported Quality Options
+### Manage Configuration
 
-- `low`
-- `medium`
-- `high`
-- `720p`
-- `1080p`
-- `2160p` (4K)
-- Custom resolutions (e.g., "1440p")
+Show configuration:
 
-### Supported Formats
-
-- `mp4`
-- `webm`
-- `mov`
-- Others depending on platform support
-
-## Development
-
-### Project Structure
-
-```
-src/
-├── main.rs           # CLI entry point
-├── lib.rs           # Core types and traits
-├── error.rs         # Error types
-├── downloader.rs    # Download management
-└── platform/        # Platform implementations
-    ├── mod.rs       # Platform trait definitions
-    ├── detector.rs  # Platform detection
-    ├── youtube.rs   # YouTube implementation
-    └── ...         # Other platforms
+```bash
+video-dl config get
 ```
 
-### Adding New Platforms
+Get a specific configuration value:
 
-To add support for a new platform:
-
-1. Create a new file in `src/platform/` for your platform
-2. Implement the `Platform` trait
-3. Register the platform in `src/platform/mod.rs`
-
-Example platform implementation:
-
-```rust
-use async_trait::async_trait;
-use url::Url;
-
-#[async_trait]
-impl Platform for MyPlatform {
-    fn name(&self) -> &'static str {
-        "MyPlatform"
-    }
-
-    fn supports_url(&self, url: &Url) -> bool {
-        url.host_str()
-            .map(|host| host.ends_with("myplatform.com"))
-            .unwrap_or(false)
-    }
-
-    async fn extract_info(&self, url: &Url) -> Result<VideoInfo> {
-        // Implementation
-    }
-
-    async fn download_video(
-        &self,
-        info: &VideoInfo,
-        format_id: &str,
-        output_path: &Path,
-        progress_tx: Arc<watch::Sender<f64>>,
-    ) -> Result<()> {
-        // Implementation
-    }
-}
+```bash
+video-dl config get -k download_dir
 ```
+
+Set a configuration value:
+
+```bash
+video-dl config set -k download_dir -v "/path/to/downloads"
+```
+
+Reset configuration to defaults:
+
+```bash
+video-dl config reset
+```
+
+## Configuration
+
+The application stores configuration in:
+- Windows: `%APPDATA%\video-dl\config.toml`
+- macOS: `~/Library/Application Support/video-dl/config.toml`
+- Linux: `~/.config/video-dl/config.toml`
+
+Available configuration options:
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| download_dir | Directory where videos are saved | Downloads folder |
+| default_quality | Default video quality | "best" |
+| default_format | Default video format | "mp4" |
+| show_progress | Whether to show progress bars | true |
+| overwrite_files | Whether to overwrite existing files | false |
+| ytdlp_path | Custom path to yt-dlp executable | None (use PATH) |
+
+## Supported Platforms
+
+- YouTube (including Shorts)
+
+## Contributing
+
+Contributions are welcome! Feel free to open an issue or submit a pull request.
 
 ## License
 
-Apache-2.0 License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

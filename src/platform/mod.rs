@@ -10,6 +10,22 @@ use crate::Result;
 pub mod detector;
 pub mod youtube;
 
+// Factory for creating platform implementations
+pub struct PlatformFactory;
+
+impl PlatformFactory {
+    /// Register all supported platforms
+    pub fn register_platforms(detector: &mut detector::PlatformDetector) {
+        // Register YouTube platform
+        detector.register(Arc::new(youtube::YouTube::default()));
+        
+        // When adding new platforms, register them here:
+        // detector.register(Arc::new(vimeo::Vimeo::default()));
+        // detector.register(Arc::new(twitch::Twitch::default()));
+        // etc.
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Quality {
     Low,

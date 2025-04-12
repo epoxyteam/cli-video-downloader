@@ -1,8 +1,10 @@
 mod download;
 mod info;
+mod config;
 
 pub use download::download_command;
 pub use info::info_command;
+pub use config::config_command;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -33,4 +35,23 @@ pub enum Commands {
         #[arg(short, long)]
         url: String,
     },
+    Config {
+        #[command(subcommand)]
+        action: Option<ConfigAction>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigAction {
+    Set {
+        #[arg(short, long)]
+        key: String,
+        #[arg(short, long)]
+        value: String,
+    },
+    Get {
+        #[arg(short, long)]
+        key: Option<String>,
+    },
+    Reset,
 }
