@@ -288,11 +288,14 @@ impl Platform for YouTube {
             cmd.args(["-f", &format_spec]);
         }
 
-        // Add additional options
+        // Add additional options for consistent progress reporting
         cmd.args([
-            "--newline", 
+            "--newline",
             "--no-part",
-            "--verbose",
+            "--no-colors",
+            "--quiet",
+            "--progress",
+            "--progress-template", "[download] %(progress._percent_str)s"
         ]);
         
         if ffmpeg_available {
@@ -315,7 +318,7 @@ impl Platform for YouTube {
                 reason: e.to_string()
             })?;
 
-        let progress_re = Regex::new(r"\[download\]\s+(\d+\.\d+)%").unwrap();
+        let progress_re = Regex::new(r"\[download\]\s+(\d+\.\d+)%.*").unwrap();
         
         // Process stderr for progress and error information
         if let Some(stderr) = child.stderr.take() {
