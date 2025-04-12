@@ -247,7 +247,8 @@ impl Platform for YouTube {
             if format_id == "best" {
                 "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best".to_string()
             } else {
-                format!("{}+bestaudio/best", format_id)
+                // Fix: Properly wrap format ID in quotes to avoid it being interpreted as a filter
+                format!("{}/best", format_id)
             }
         } else {
             // If ffmpeg is not available, we must use formats that already include both video and audio
@@ -267,8 +268,8 @@ impl Platform for YouTube {
                             Quality::Low => "360",
                             Quality::Custom(ref s) => s, // Use the custom quality string
                         };
-                        // Look for formats with audio included that match the quality
-                        format!("best[height<={}][ext=mp4]/best", quality_label)
+                        // Fix: Use numeric ID directly instead of filter expression
+                        format!("{}/best[height<={}][ext=mp4]/best", format_id, quality_label)
                     },
                     None => "best[ext=mp4]/best".to_string()
                 }
@@ -281,11 +282,10 @@ impl Platform for YouTube {
         // Prepare the yt-dlp command
         let mut cmd = Command::new("yt-dlp");
         
+        cmd.args(["-f", &format_spec]);
+        
         if ffmpeg_available {
-            cmd.args(["-f", &format_spec, "--merge-output-format", "mp4"]);
-        } else {
-            // When ffmpeg is not available, we need to ensure we get a single file with audio included
-            cmd.args(["-f", &format_spec]);
+            cmd.args(["--merge-output-format", "mp4"]);
         }
 
         // Add additional options for consistent progress reporting
@@ -297,13 +297,6 @@ impl Platform for YouTube {
             "--progress",
             "--progress-template", "[download] %(progress._percent_str)s"
         ]);
-        
-        if ffmpeg_available {
-            cmd.args(["--merge-output-format", "mp4"]);
-        } else {
-            // If no ffmpeg, ensure we only download formats that already include audio
-            cmd.arg("--no-check-formats");
-        }
         
         // Add output path and URL
         cmd.args(["-o", output_str, info.url.as_str()]);

@@ -48,5 +48,29 @@ async fn main() -> Result<()> {
             
             video_dl::commands::batch_download_command(url, file, output_dir, quality, format, parallel).await
         }
+        Commands::Merge { files, file_list, output } => {
+            // For merge, we need ffmpeg
+            if !status.ffmpeg_available {
+                dependency_check::print_dependency_status(&status);
+                return Err(video_dl::Error::CommandExecution { 
+                    command: "ffmpeg".to_string(), 
+                    reason: "ffmpeg is required for merging videos".to_string() 
+                });
+            }
+            
+            video_dl::commands::merge_command(files, file_list, output).await
+        }
+        Commands::DownloadMerge { url, file, output, quality, format, parallel } => {
+            // For download-merge, we need both yt-dlp and ffmpeg
+            if !status.ffmpeg_available {
+                dependency_check::print_dependency_status(&status);
+                return Err(video_dl::Error::CommandExecution { 
+                    command: "ffmpeg".to_string(), 
+                    reason: "ffmpeg is required for merging videos".to_string() 
+                });
+            }
+            
+            video_dl::commands::download_merge_command(url, file, output, quality, format, parallel).await
+        }
     }
 }

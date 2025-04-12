@@ -8,7 +8,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use crate::{Result, Error, Config, Downloader};
 
 /// Helper function to handle downloading a single video within the batch
-async fn download_single_video(
+pub async fn download_single_video(
     downloader: &Downloader,
     url: &str,
     output_dir: Option<PathBuf>,
@@ -37,8 +37,9 @@ async fn download_single_video(
             .find(|f| f.format.to_string().eq_ignore_ascii_case(format));
     }
     
-    // If still not found, just pick the first format (best quality)
+    // If still not found, just use the "best" format which is always available
     let selected_format = selected_format
+        .or_else(|| info.formats.iter().find(|f| f.id == "best"))
         .or_else(|| info.formats.first())
         .ok_or_else(|| Error::NoSuitableFormats)?;
 
@@ -52,6 +53,7 @@ async fn download_single_video(
     };
     
     // Download the video and return the output path
+    // Use the format ID directly instead of constructing a complex format specification
     downloader.download(url, &selected_format.id, output).await
 }
 

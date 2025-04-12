@@ -228,7 +228,8 @@ impl Platform for TikTok {
             if format_id == "best" {
                 "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best".to_string()
             } else {
-                format!("{}+bestaudio/best", format_id)
+                // Fix: Properly use format ID without complex filtering
+                format!("{}/best", format_id)
             }
         } else {
             // If ffmpeg is not available, we must use formats that already include both video and audio
@@ -248,8 +249,8 @@ impl Platform for TikTok {
                             Quality::Low => "360",
                             Quality::Custom(ref s) => s,
                         };
-                        // Look for formats with audio included that match the quality
-                        format!("best[height<={}][ext=mp4]/best", quality_label)
+                        // Fix: Use format ID directly followed by fallback formats
+                        format!("{}/best[height<={}][ext=mp4]/best", format_id, quality_label)
                     },
                     None => "best[ext=mp4]/best".to_string()
                 }
@@ -262,10 +263,11 @@ impl Platform for TikTok {
         // Prepare the yt-dlp command
         let mut cmd = Command::new("yt-dlp");
         
+        // Fix: Simplify command structure to avoid redundant args
+        cmd.args(["-f", &format_spec]);
+        
         if ffmpeg_available {
-            cmd.args(["-f", &format_spec, "--merge-output-format", "mp4"]);
-        } else {
-            cmd.args(["-f", &format_spec]);
+            cmd.args(["--merge-output-format", "mp4"]);
         }
 
         // Add additional options for consistent progress reporting
@@ -277,12 +279,6 @@ impl Platform for TikTok {
             "--progress",
             "--progress-template", "[download] %(progress._percent_str)s"
         ]);
-        
-        if ffmpeg_available {
-            cmd.args(["--merge-output-format", "mp4"]);
-        } else {
-            cmd.arg("--no-check-formats");
-        }
         
         // Add output path and URL
         cmd.args(["-o", output_str, info.url.as_str()]);
