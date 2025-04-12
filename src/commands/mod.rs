@@ -11,8 +11,8 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "video-dl")]
-#[command(author = "Your Name <your.email@example.com>")]
-#[command(version = "0.1.0")]
+#[command(author = "Phong H. <huyphongbn24@gmail.com>")]
+#[command(version = "0.1.1")]
 #[command(about = "A fast and user-friendly video downloader")]
 pub struct Cli {
     #[command(subcommand)]
