@@ -3,14 +3,14 @@ mod info;
 mod config;
 mod batch;
 mod merge;
-mod download_merge; // Thêm module mới
+mod download_merge;
 
 pub use download::download_command;
 pub use info::info_command;
 pub use config::config_command;
 pub use batch::batch_download_command;
 pub use merge::merge_command;
-pub use download_merge::download_merge_command; // Export lệnh mới
+pub use download_merge::download_merge_command; 
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;

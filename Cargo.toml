@@ -2,48 +2,33 @@
 name = "video-dl"
 version = "0.3.0"
 edition = "2021"
-description = "A fast and user-friendly video downloader CLI tool"
-authors = ["Phong H. <huyphongbn24@gmail.com>"]
-license = "MIT"
+
+[lib]
+name = "video_dl"
+path = "src/lib.rs"
 
 [dependencies]
-# CLI argument parsing
-clap = { version = "4.4", features = ["derive"] }
-
-# Error handling
-anyhow = "1.0"
-thiserror = "1.0"
-
-# Async runtime and networking
-tokio = { version = "1.35", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "stream"] }
 async-trait = "0.1"
+bytes = "1.5"
+clap = { version = "4.4", features = ["derive"] }
+console = "0.15"
+dirs = "5.0"
+env_logger = "0.11"
 futures = "0.3"
-tokio-stream = "0.1"
-
-# Progress bars and CLI interface
+futures-util = "0.3"
 indicatif = "0.17"
-
-# URL parsing and validation
-url = "2.5"
-
-# Logging
+lazy_static = "1.4"
 log = "0.4"
-env_logger = "0.10"
-
-# Serialization
+rand = "0.8"
+regex = "1.10"
+reqwest = { version = "0.11", features = ["json", "stream", "cookies", "brotli", "gzip"] }
+sanitize-filename = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.7"  # Added for config file handling
-
-# File system and path operations
-dirs = "5.0"  # Added for accessing user directories
-
-# Utils
-uuid = { version = "1.6", features = ["v4"] }
-sanitize-filename = "0.5"
-regex = "1.10"
-
-[dev-dependencies]
-tokio-test = "0.4"
-mockall = "0.12"
+thiserror = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+toml = "0.8"
+url = "2.5"
+uuid = { version = "1.7", features = ["v4"] }
+scraper = "0.18"
+base64 = "0.21.0"
