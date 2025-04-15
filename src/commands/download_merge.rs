@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use tokio::process::Command;
 use indicatif::{ProgressBar, ProgressStyle};
-use futures::future::join_all;
+use futures_util::future::join_all;
 use tokio::task;
 use uuid::Uuid;
 use sanitize_filename;

@@ -9,17 +9,16 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = "0.1"
+base64 = "0.21.0"
 bytes = "1.5"
 clap = { version = "4.4", features = ["derive"] }
 console = "0.15"
 dirs = "5.0"
 env_logger = "0.11"
-futures = "0.3"
 futures-util = "0.3"
 indicatif = "0.17"
 lazy_static = "1.4"
 log = "0.4"
-rand = "0.8"
 regex = "1.10"
 reqwest = { version = "0.11", features = ["json", "stream", "cookies", "brotli", "gzip"] }
 sanitize-filename = "0.5"
@@ -31,4 +30,3 @@ toml = "0.8"
 url = "2.5"
 uuid = { version = "1.7", features = ["v4"] }
 scraper = "0.18"
-base64 = "0.21.0"

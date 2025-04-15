@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use futures::future::join_all;
+use futures_util::future::join_all;
 use tokio::task;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
